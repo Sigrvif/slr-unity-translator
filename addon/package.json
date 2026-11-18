@@ -1,0 +1,14 @@
+{
+  "name": "SLRUnity",
+  "title": "SLRUnity",
+  "description": "Translate Unity games (IL2CPP & Mono) with the DSLR engine: strings, fonts, and image text via SEP.",
+  "version": "2.8.2",
+  "author": "SLRUnity project",
+  "autoload": false,
+  "load": [
+    "UnitySceneGraph.js",
+    "UnityAddon.js"
+  ],
+  "optionsDisplay": "general",
+  "docs": "docs.html"
+}

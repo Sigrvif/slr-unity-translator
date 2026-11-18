@@ -1,0 +1,12 @@
+# Build outputs and fetched payloads (rebuilt by build/build_release.py
+# and build/fetch_*.py — never committed)
+dist/
+runtime/
+
+# Dev-era snapshots and analysis state (kept on disk, not source)
+_snapshots/
+.sdd/
+
+# Local caches
+__pycache__/
+.pytest_cache/

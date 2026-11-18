@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SLRUnity — SLR Translator addon help</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 0 4rem;
+    font: 15px/1.65 "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    color: #1c2430; background: #f4f6f9;
+  }
+  header {
+    background: #20304a; color: #fff; padding: 2.2rem 1.5rem 1.9rem;
+    border-bottom: 4px solid #3f74c0;
+  }
+  header .inner, main { max-width: 880px; margin: 0 auto; padding: 0 1.25rem; }
+  header h1 { margin: 0 0 .35rem; font-size: 1.7rem; letter-spacing: .3px; }
+  header p { margin: 0; color: #c6d4ea; font-size: .95rem; }
+  h2 {
+    font-size: 1.22rem; margin: 2.4rem 0 .8rem; color: #20304a;
+    border-bottom: 2px solid #d7e0ec; padding-bottom: .3rem;
+  }
+  h3 { font-size: 1.02rem; margin: 1.5rem 0 .5rem; color: #2a4580; }
+  p { margin: .6rem 0; }
+  ul, ol { margin: .5rem 0 .9rem; padding-left: 1.5rem; }
+  li { margin: .3rem 0; }
+  code, kbd {
+    font: .92em Consolas, "Courier New", monospace;
+    background: #e9eef5; border: 1px solid #d7e0ec; border-radius: 4px;
+    padding: .08em .35em;
+  }
+  .card {
+    background: #fff; border: 1px solid #d7e0ec; border-radius: 8px;
+    padding: 1rem 1.2rem; margin: .8rem 0;
+  }
+  .step { display: flex; gap: .9rem; margin: 1rem 0; }
+  .step .n {
+    flex: 0 0 auto; width: 2rem; height: 2rem; border-radius: 50%;
+    background: #3f74c0; color: #fff; font-weight: 600; text-align: center;
+    line-height: 2rem; font-size: 1rem;
+  }
+  .step .body { flex: 1 1 auto; }
+  .step .body h3 { margin: .1rem 0 .3rem; }
+  .note { border-left: 4px solid #3f74c0; background: #eef4fc; }
+  .warn { border-left: 4px solid #c07a1f; background: #fdf4e7; }
+  .danger { border-left: 4px solid #c0392b; background: #fdeeec; }
+  table { border-collapse: collapse; width: 100%; margin: .8rem 0; background: #fff; }
+  th, td { border: 1px solid #d7e0ec; padding: .45rem .6rem; text-align: left; vertical-align: top; }
+  th { background: #e9eef5; }
+  footer {
+    max-width: 880px; margin: 3rem auto 0; padding: 1rem 1.25rem;
+    color: #5a6b80; font-size: .85rem; border-top: 1px solid #d7e0ec;
+  }
+  .jp { font-size: .95em; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <h1>SLRUnity</h1>
+    <p>An SLR Translator addon &middot; engine &ldquo;Unity (IL2CPP / Mono)&rdquo; &middot; strings, fonts and image text for Unity games</p>
+  </div>
+</header>
+
+<main>
+
+<h2>What this addon does</h2>
+<p>
+  The SLRUnity adds a new game engine to SLR Translator, so Unity games
+  (both <strong>IL2CPP</strong> and <strong>Mono</strong> scripting backends) can be
+  translated the same way RPG Maker games are: with the DSLR translation engine,
+  glossaries and SLR's QC pipeline. It ships its own Python backend and runtime,
+  so nothing extra has to be installed.
+</p>
+<p>It can:</p>
+<ul>
+  <li><strong>Find every user-visible translatable string</strong> in the game's data
+      files: serialized scene/object fields (type-trees), raw length-prefixed
+      text records, IL2CPP <code>global-metadata.dat</code> string literals,
+      Mono DLL code literals, <code>TextAsset</code> payloads (JSON/CSV/...)
+      and plain text files.
+      Japanese strings are all collected; non-Japanese strings (official
+      English UI, the game's own English tables, credits) are collected from
+      display text only, so engine-internal names stay out. Everything is
+      <strong>risk-tagged</strong> so only the safe tiers are translated by
+      default &mdash; see
+      <a href="#tags">String tags</a> below.</li>
+  <li><strong>Stage the game into the project.</strong> At creation, every file the
+      scan found strings in — and every file bearing an embedded font — is
+      copied into the project's staging cache &mdash;
+      the saved <code>.slrproj</code> carries them, so the project is
+      self-contained and the original game folder is only needed again for a
+      <em>full game copy</em> export.</li>
+  <li><strong>Write translations back</strong> on export &mdash; by default as a small
+      <strong>file-replacement patch</strong> you copy over the game folder, or as
+      a full standalone copy of the game (folder or zip) &mdash; no runtime
+      hooks, no BepInEx, no patcher; the original game is never touched.</li>
+  <li><strong>Swap the game's embedded fonts</strong> with SLR Translator's own
+      condensed CJK font <em>SLRCondensedCJK</em> (already shipped by the app for
+      SEP rendering; no font is bundled with this addon) so translated English
+      renders narrow and untranslated Japanese still renders, and
+      <strong>re-render the TextMeshPro font atlases</strong> from SLR's fonts
+      (Latin/UI text from <em>Stint Ultra Condensed</em>, Japanese from
+      <em>SLRCondensedCJK</em>) &mdash; see
+      <a href="#fonts">Fonts</a> below.</li>
+  <li><strong>Round-trip images through SEP</strong> (SLR Extraction Project) for
+      image-text translation — as two standalone tools on the New Project
+      slide: extract game textures for SEP, then insert SEP's rendered images
+      into a game copy. The image workflow is independent of any translation
+      project.</li>
+  <li><strong>Remove mosaic censorship without a project</strong> — a third
+      standalone tool patches a game's mosaic layers and packs the changed
+      files into a drop-in zip, so already-translated games can be treated
+      directly. See <a href="#demosaic">Demosaic</a>.</li>
+</ul>
+
+<h2 id="install">Installing</h2>
+<div class="card note">
+  <p><strong>Short version:</strong> extract the downloaded archive
+  (<code>SLRUnity-<em>version</em>-win.zip</code>, e.g.
+  <code>SLRUnity-2.8.1-win.zip</code>, or the smaller <code>.7z</code>) into the
+  <code>www\addons\</code> folder of your SLR Translator installation, then
+  restart SLR Translator. To remove the addon later, delete the
+  <code>SLRUnity</code> folder &mdash; that is the whole story.</p>
+  <p>You can also open the help any time via the <strong>Open documentation</strong>
+  link on the <strong>SLRUnity</strong> slide of the New Project dialog.
+  On SLR Translator v3.078+ it opens this addon's page in the offline
+  documentation (<code>Help</code> window, "Addons" section); this self-contained
+  page is the fallback for older builds.</p>
+</div>
+<ol>
+  <li><strong>Find the addons folder.</strong> Open your SLR Translator
+      installation folder (the one containing <code>SLR Translator.exe</code>)
+      and inside it the <code>www\addons\</code> folder. Create it if it does
+      not exist yet.</li>
+  <li><strong>Extract the archive into it.</strong> Right-click the
+      downloaded <code>SLRUnity-<em>version</em>-win.zip</code> and use
+      <em>Extract All</em>
+      (Windows opens .zip files by itself; a <code>.7z</code> archive needs
+      7-Zip or similar but is smaller). Extract INTO
+      <code>www\addons\</code> &mdash; the archive already wraps everything
+      in one <code>SLRUnity\</code> folder, so the result is
+      <code>www\addons\SLRUnity\</code> directly containing
+      <code>package.json</code>, <code>UnityAddon.js</code>,
+      <code>lib\</code>, <code>backend\</code>, <code>runtime\</code> and
+      <code>assets\</code>. Do not extract into an extra nested folder of the
+      same name.</li>
+  <li>Restart SLR Translator. The <em>New Project</em> dialog now shows a
+      <strong>SLRUnity</strong> entry (with its own icon) &mdash; pick it,
+      press <strong>Select Folder</strong> and choose the game folder. Unity games
+      are detected automatically; no engine has to be picked by hand.</li>
+</ol>
+<div class="card note">
+  <p><strong>Removing / updating:</strong> delete (or replace the contents of)
+  <code>www\addons\SLRUnity\</code> and restart. Nothing else is left
+  behind except the addon's own entry in <code>data\config.json</code>, which is
+  harmless. To update, extract the new archive over the old folder the same
+  way.</p>
+</div>
+
+<h2>The workflow</h2>
+
+<p>The <strong>SLRUnity</strong> slide in the <em>New Project</em> dialog
+offers four clearly separated actions. Strings and images are two independent
+workflows: the strings project never touches images, and the image tools never
+need a project &mdash; and mosaic removal works with or without a project.</p>
+
+<div class="step"><div class="n">1</div><div class="body">
+  <h3>Strings: create a translation project</h3>
+  <p><em>New Project</em> &rarr; <strong>SLRUnity</strong> entry &rarr;
+  <strong>Select Folder</strong>, then pick the game <strong>folder</strong>
+  (or the game's <code>.exe</code>). The engine detects Unity via
+  <code>UnityPlayer.dll</code> / <code>GameAssembly.dll</code> or a
+  <code>&lt;Game&gt;_Data</code> folder with Unity data files. Progress streams
+  into the project-creation console; a typical game takes a few minutes. After
+  the scan the console shows <em>&ldquo;Staging files i/n name&rdquo;</em> lines
+  while every string-bearing file is copied into the project (the
+  self-contained copy), plus a <em>Tags:</em> line that splits the strings by
+  risk. The result is a normal SLR project: one entry per file
+  (scenes like <code>level0</code> first, then metadata, TextAssets, text
+  files), one row per string, with UI hierarchy contexts in Row
+  Properties &mdash; and every row carries its risk tag (see
+  <a href="#tags">String tags</a>).</p>
+</div></div>
+
+<div class="step"><div class="n">2</div><div class="body">
+  <h3>Strings: translate</h3>
+  <p>Everything standard SLR from here: extract/generate a glossary, DSLR batch
+  translation (auto, or manual row editing), QC checks. Leave rows blank to skip
+  them &mdash; blank translations are never written into the game. Rows tagged
+  yellow/red (and their no-Japanese variants) are skipped by batch translation
+  until <em>you</em> promote them &mdash; see
+  <a href="#tags">String tags</a>.</p>
+</div></div>
+
+<h3 id="tags" style="margin-top:2rem">String tags &mdash; what gets translated by default</h3>
+
+<p>The scan collects <em>everything</em> user-visible, then tags every row by
+how safe it is to translate. The tags are SLR Translator's own per-row tags,
+so SLR's batch translation applies its default blacklist automatically:
+rows tagged <strong>yellow, red, gray, gold or darkred are skipped</strong> by
+batch translation; <strong>untagged and green rows are translated</strong>.
+A risky row is never lost &mdash; it sits in the project until you decide.</p>
+
+<table>
+  <tr><th>Tag</th><th>Meaning</th><th>Examples</th></tr>
+  <tr><td><em>(no tag)</em></td>
+      <td>Display text &mdash; always safe. <strong>Translated by
+          default.</strong></td>
+      <td>UI labels (<code>m_Text</code>), dialogue scripts (line-based
+          TextAssets/text files)</td></tr>
+  <tr><td><strong>green</strong></td>
+      <td>Script text that is confirmed safe. <strong>Translated by
+          default.</strong></td>
+      <td>Code literals (<code>global-metadata.dat</code>, Mono DLLs &mdash;
+          the intro cinematics many games keep in code); patched by
+          purpose-built writers</td></tr>
+  <tr><td><strong>yellow</strong></td>
+      <td>Likely safe, but confirm first (not translated by default).</td>
+      <td>Japanese in non-display fields, JSON/CSV values &mdash; game data
+          (name/stat tables) in some titles</td></tr>
+  <tr><td><strong>red</strong></td>
+      <td>Likely structural &mdash; leave alone unless you know the game
+          (not translated by default).</td>
+      <td>Object/asset names (<code>m_Name</code>, keys, cue/event names),
+          data-table rows, asset filenames</td></tr>
+  <tr><td><strong>gray</strong> / <strong>gold</strong> /
+          <strong>darkred</strong></td>
+      <td>The no-Japanese variants, applied when SLR's <em>Japanese
+          source</em> general option is on: gray = untagged but without
+          Japanese (official English UI), gold = yellow without Japanese,
+          darkred = red or green without Japanese.</td>
+      <td>English "Achievement" button, English table values</td></tr>
+</table>
+
+<p>To translate a yellow/red row, retag it in SLR (right-click &rarr; Tags) or
+uncheck those colors in the batch dialog's blacklist &mdash; once
+<em>you</em> choose to translate a tagged row it is patched like any other.
+The export always writes every non-blank translation regardless of tags;
+tags only decide what batch translation picks up by default.</p>
+
+<div class="step"><div class="n">3</div><div class="body">
+  <h3>Strings: export</h3>
+  <p><em>Export</em> with mode <strong>Folder</strong> or <strong>Zip</strong>,
+  and pick the <strong>Export kind</strong> &mdash; <em>patch (changed/selected
+  files only)</em> (default) or <em>full game copy</em> &mdash; plus the
+  optional <strong>Replace game fonts</strong>. The export runs under the same
+  loading overlay/console as project creation (a <em>Processing</em> preamble,
+  one <em>Unity export</em> line per patched file, one line per reverted
+  original, a <em>Packing archive&hellip;</em> line in zip mode, then the
+  console summary):</p>
+  <table>
+    <tr><th>Option</th><th>Effect</th></tr>
+    <tr>
+      <td><strong>Export kind</strong>:<br><em>patch (changed/selected files only)</em><br>(default)</td>
+      <td>Exports the files actually changed this run, as whole-file
+          replacements at their game-relative paths &mdash; read from the copy
+          staged inside the project, so it works even if the original game
+          folder is gone. <strong>Apply it by copying the exported files over
+          your game folder.</strong> Small and fast; the summary reports
+          <em>files exported</em>.<br><br>
+          <strong>Everything else comes out as originals (revert):</strong>
+          every file in scope that the patch did not change is exported as its
+          <em>original</em> (staged) bytes, so the patch always covers its full
+          scope &mdash; copy it over a previous export to revert. With
+          <em>no</em> file selection the scope is <strong>all project
+          files</strong> (export everything); with files checked in the
+          project's file list, <strong>only those files</strong> are in scope.
+          Exporting with no translations at all is therefore valid: it produces
+          an all-originals baseline patch.</td>
+    </tr>
+    <tr>
+      <td><strong>Export kind</strong>:<br><em>full game copy</em></td>
+      <td>The classic whole-game export: a complete standalone copy of the
+          game (patched in place), as a folder or a zip. Needs the
+          <strong>original game folder</strong> to still exist where the
+          project was created &mdash; if it is gone, the export tells you to
+          use patch export instead (the project is self-contained) and does
+          nothing.</td>
+    </tr>
+    <tr>
+      <td><strong>Replace game fonts</strong></td>
+      <td>Two things, both with SLR Translator's own fonts (a Japanese-capable
+          face for dialogue so untranslated Japanese keeps rendering, a
+          narrower Latin-only face for UI because pure UI text never needs
+          Japanese glyphs): swaps the game's
+          embedded Japanese fonts with the condensed CJK font SLRCondensedCJK
+          (recommended for English text &mdash; narrow Latin glyphs and CJK
+          coverage for everything you didn't translate), and
+          <strong>re-renders the baked glyph atlases of TextMeshPro font
+          assets</strong> &mdash; the JP dialogue font from SLRCondensedCJK,
+          every other (Latin/UI) TMP font from SLR's <em>Stint Ultra
+          Condensed</em> &mdash; so narrow English applies even to games whose
+          TMP letter images are frozen. If a font file is missing from the SLR
+          installation, the export logs a <em>WARNING</em> line in the overlay
+          console and skips only the font stage. In patch mode the swap/bake
+          adds only the font-bearing files to the patch. See
+          <a href="#fonts">Fonts</a>.</td>
+    </tr>
+    <tr>
+      <td><strong>Remove mosaic censorship<br>(demosaic)</strong></td>
+      <td>Off by default &mdash; opt in per export. Detects the game's
+          mosaic-censorship layers in its own data files and patches them out
+          of the export: mosaic-named objects are hidden, mosaic materials
+          are neutralized by swapping their shader for the game's own
+          transparent one. Your original game is never modified, and
+          exporting again with the box unchecked reverts everything. See
+          <a href="#demosaic">Demosaic</a>.</td>
+    </tr>
+    <tr>
+      <td><strong>Demosaic detection level</strong></td>
+      <td><em>High confidence only</em> (recommended) patches only
+          unambiguous candidates &mdash; mosaic-named objects/materials/
+          shaders, or shaders with explicit mosaic properties.
+          <em>Include medium confidence</em> also patches weaker matches
+          (e.g. a shader carrying only the typical mosaic size parameters):
+          more coverage on stubborn games, higher false-positive risk.</td>
+    </tr>
+    <tr>
+      <td><strong>Reveal instead of hide</strong><br>(advanced)</td>
+      <td>For mosaic materials on modeled body meshes: swap their shader
+          for the game's own display shader and KEEP the textures, instead
+          of making them invisible &mdash; the treatment for games whose
+          censorship is a shader applied to the real mesh. Try it when the
+          standard removal makes body parts disappear entirely. Dedicated
+          overlay objects are still hidden. Off by default.</td>
+    </tr>
+    <tr>
+      <td><strong>Patch code-level censorship</strong><br>(Mono games,
+          advanced)</td>
+      <td>Deep opt-in: mosaic-named censor components (e.g. a
+          <code>MosaicController</code> class) are stubbed in the game's
+          managed DLLs &mdash; their <code>Update</code>/
+          <code>OnEnable</code>/&hellip; methods are overwritten in place
+          with an immediate return, so the censoring code never runs.
+          Same-size edits, originals untouched, revert by re-exporting
+          &mdash; but a malformed patch could crash the game, so test on a
+          copy. IL2CPP games are detected and reported not patchable.</td>
+    </tr>
+  </table>
+  <p>The summary is written into the same console (<em>Export complete</em>,
+  mode, counts, output folder) &mdash; the overlay stays up with the finished
+  log until <em>you</em> close it, and nothing pops up on success (only
+  failures alert, after the overlay has ended). It reports how many strings
+  were written, how many files were exported, how many fonts were swapped and
+  how many TMP font atlases were re-rendered.
+  The game itself is never touched.</p>
+</div></div>
+
+<h3 style="margin-top:2rem">The image round-trip (standalone, no project needed)</h3>
+
+<div class="step"><div class="n">1</div><div class="body">
+  <h3>Extract textures</h3>
+  <p>On the same SLRUnity slide, press
+  <strong>Select Game Folder &amp; Extract Textures</strong> and pick the game.
+  Every Texture2D is dumped as a PNG into <code>&lt;Game&gt;_unity_img</code>
+  next to the game, together with a manifest
+  (<code>unity_img_manifest.json</code>). Progress runs in the loading console;
+  the game itself is never modified.</p>
+</div></div>
+
+<div class="step"><div class="n">2</div><div class="body">
+  <h3>Prune + SEP</h3>
+  <p>Delete the images you do <em>not</em> want translated, then create an
+  <strong>SEP project</strong> on that folder (New Project &rarr; SEP).</p>
+</div></div>
+
+<div class="step"><div class="n">3</div><div class="body">
+  <h3>Translate + render</h3>
+  <p>In SEP, OCR &rarr; translate &rarr; render the images, then export SEP's
+  rendered images to a folder, e.g. <code>&lt;Game&gt;_unity_img_translated</code>.</p>
+</div></div>
+
+<div class="step"><div class="n">4</div><div class="body">
+  <h3>Insert</h3>
+  <p>Back on the SLRUnity slide, use <strong>Insert translated images
+  into a game copy</strong>: pick the game folder, the extracted-images folder
+  (the one with <code>unity_img_manifest.json</code>), SEP's rendered-images
+  folder and an output folder &mdash; optionally tick
+  <strong>Replace game fonts</strong>. The tool copies the game and applies the
+  rendered images (a summary reports textures imported and fonts swapped). To
+  translate strings <em>and</em> images, export the strings project first and
+  run Insert on that exported copy (or vice versa &mdash; the tools are
+  independent).</p>
+</div></div>
+
+<h3 style="margin-top:2rem">The mosaic quick-fix (standalone, no project needed)</h3>
+
+<p>The fourth action on the SLRUnity slide, <strong>Select Game Folder &amp;
+Remove Mosaic</strong>, runs the demosaic treatment (below) on any game
+directory <em>without creating a translation project</em> &mdash; the quick
+way to treat a game that is already fully translated. Pick the options
+(detection level, <em>Reveal instead of hide</em>, <em>Patch code-level
+censorship</em> &mdash; your selection is remembered), pick the game folder,
+and the tool packs only the changed files into
+<code>&lt;Game&gt;_demosaic.zip</code> next to the game: extract its contents
+over the game folder to apply; remove the files it contains to undo. A run
+that finds nothing says so (try the <em>medium</em> detection level).</p>
+
+
+<h2 id="demosaic">Demosaic — removing mosaic censorship</h2>
+
+<p>Many Japanese games ship their <strong>uncensored meshes and textures in
+the game data</strong> and add the mosaic censorship <strong>on top at
+runtime</strong> &mdash; a dedicated overlay object with a mosaic material, or
+a mosaic shader applied to the modeled mesh. The well-known BepInEx plugins
+(UniversalUnityDemosaics) hide those layers while the game runs, matching
+object names against a short list ("mosaic", "censor", "pixelate", &hellip;)
+every single frame. SLRUnity's demosaic does the same job <strong>statically
+and in place</strong>: at export it finds those layers in the game's
+serialized data files and writes a patched copy &mdash; <strong>no BepInEx,
+no runtime hooks, nothing installed into the game</strong>. Your original
+game folder is never modified; export again with the checkbox unchecked (or
+delete the two patched files) to revert. The same treatment is available
+<em>without any project</em> as the New Project slide's <strong>Remove mosaic
+censorship (standalone)</strong> tool &mdash; for games that are already
+translated.</p>
+
+<ul>
+  <li><strong>Mosaic-named objects</strong> (e.g. a GameObject called
+      <code>mosaic</code>) are hidden: the object is deactivated and its
+      renderers stripped, so nothing renders even when the game's own scripts
+      turn the object back on mid-scene.</li>
+  <li><strong>Mosaic materials</strong> are neutralized: the material is
+      re-pointed to the game's <em>own</em> transparent/unlit shader, its
+      texture slots are cleared and its colors set to fully transparent.
+      Renderers whose <em>every</em> material is a mosaic candidate are
+      hidden outright; mixed combined meshes are never hidden &mdash; only
+      their mosaic material is neutralized.</li>
+  <li>Detection evidence goes beyond names: a shader whose serialized
+      <strong>property table</strong> names mosaic parameters
+      (<code>_PixelSize</code>, <code>_MosaicStrength</code>, &hellip;)
+      counts even when the shader's name was stripped from the build (which
+      happens).</li>
+</ul>
+
+<p>The export summary reports what was found &mdash; per-action lines like
+<em>hidden object 'mosaic'</em> &mdash; and says so explicitly when the stage
+ran but found nothing. <strong>Honest limits:</strong> mosaics created purely
+in code (no serialized asset) are invisible to a static scan and are reported
+as "not found" rather than guessed at; the material neutralization picks the
+game's own shader by pipeline (URP vs built-in) but only <em>you</em> can
+confirm the scene looks right &mdash; check an H scene after exporting;
+code-level censorship is covered for <em>Mono</em> games by the opt-in code
+tier (lifecycle methods stubbed &mdash; a malformed patch could crash the
+game, so test on a copy), while IL2CPP code is native machine code and
+cannot be patched statically (no BepInEx plugin exists for that either);
+and censorship inlined into unrelated code with no dedicated class is not
+name-detectable &mdash; UUD's plugin has the same blind spot. Projects
+created before this feature get a warning to re-create the project (or use
+the <em>full game copy</em> export kind, which scans the original game).</p>
+
+
+<h2 id="fonts">Fonts — why English overflows, and what the swap does</h2>
+
+<h3>Why</h3>
+<p>Japanese Unity games usually render <em>all</em> text through a
+<strong>Japanese font</strong>, and Japanese fonts draw Latin letters
+<strong>wide</strong> (often full-width). Your English translations then
+overflow their UI boxes and wrap mid-word. Ticking <strong>Replace game
+fonts</strong> does two things. First it swaps the game's embedded legacy
+Font data for SLR Translator's own <strong>SLRCondensedCJK</strong>: its
+<strong>Latin glyphs are narrow</strong>, so English text fits the UI like it
+would in a Western font, and it still carries <strong>CJK coverage</strong>,
+so every string you did <em>not</em> translate keeps rendering in Japanese
+&mdash; no tofu boxes. Second &mdash; and this is what fixes TextMeshPro games
+&mdash; it <strong>re-renders the baked glyph atlases</strong> of the game's
+static TMP font assets from SLR's fonts: the JP font asset is re-baked from
+SLRCondensedCJK (so untranslated Japanese still renders), while every other
+TMP font asset (the default UI font) is re-baked from <em>Stint Ultra
+Condensed</em> &mdash; the narrow Latin face your translations were laid out
+for. The re-rendered atlases ship inside the patch as ordinary
+texture/font-asset files: the game draws its text in the new fonts
+<strong>without any runtime font re-rendering</strong>.</p>
+
+<h3>Where</h3>
+<ul>
+  <li><strong>Strings projects:</strong> the <strong>Replace game fonts</strong>
+      checkbox in the Export dialog (step 3 above).</li>
+  <li><strong>Image projects:</strong> the same checkbox in the
+      <strong>Insert translated images into a game copy</strong> tool (the swap
+      then rides along with the inserted images in the game copy).</li>
+</ul>
+
+<h3>How it works</h3>
+<p>The swap rewrites the <strong>font data embedded inside the game's own font
+files</strong> (legacy <code>Font</code> objects and TextMeshPro font assets
+alike). Object names and references are preserved, so the game keeps using
+"its" fonts &mdash; they just contain SLRCondensedCJK instead. Nothing is added
+to the game and no game file is renamed.</p>
+<p>The font-bearing files <strong>ride along inside the project</strong> (they
+are staged at creation like the string files), so a patch export can include
+them even when the original game folder has been moved or deleted. When the
+original folder is still where the project was created, it is consulted as
+well &mdash; so font files the project never staged (older projects, or a font
+file that failed to copy) are still found and swapped.</p>
+<p>The TMP atlas re-render keeps each font asset's geometry (point size, atlas
+size, padding, render mode) and regenerates its glyph/character tables and
+atlas pixels: the new character set is the asset's original characters &cup;
+ASCII &cup; every character used in your translations; glyphs the chosen font
+cannot provide are skipped and counted (the backend log carries the per-asset
+coverage). Layout metrics (line height, ascent, underline) are recomputed from
+the new font so vertical spacing stays consistent.</p>
+
+<h3>Limits</h3>
+<p><strong>TextMeshPro with baked (static) glyph atlases is covered</strong> by
+the atlas re-render (above): the frozen letter images are replaced with ones
+generated from SLR's fonts at export time. If text still renders wide on such
+a game, check the export summary line <em>TMP font atlases re-rendered</em>
+&mdash; a value of 0 with a <em>skipped</em> note means the re-bake declined
+those assets (e.g. the original atlas is too small for the character set at
+its point size), and those assets keep their original look; the backend log
+names each skipped asset and the reason.</p>
+<p>Two smaller honest caveats: the default faces are fixed
+(SLRCondensedCJK for Japanese + Stint Ultra Condensed for Latin), though the
+export options carry two <strong>Custom font</strong> fields that accept your
+own <code>.ttf</code>/<code>.otf</code> for each role (dialogue vs UI); and
+if a resolved font file is missing from the SLR installation the export logs
+a warning and skips only the affected font stage.</p>
+
+<h2>Understanding the project file list</h2>
+<p>Unity games store text in several different places. The project's file tabs
+are the game's real storage — here is what each kind means:</p>
+<ul>
+  <li><b>level0, level1, … levelN</b> — Unity <i>scenes</i>, not game "levels".
+  The number is the <b>build index</b>: the order scenes appear in the game's
+  build settings (level0 is usually the title/boot scene). Everything that
+  exists in a scene — including UI canvases — is serialized into it. Many
+  games keep their whole menu/UI in every scene, so level1…levelN can look
+  almost identical: same Achievement list, same settings labels, same
+  dialogs. That is the game's doing, not a scan error.</li>
+  <li><b>You do not need to translate the duplicates.</b> Translation is keyed
+  by the original text: fill in the string once (in any one of the copies)
+  and export writes that translation to <b>every</b> occurrence in every
+  file. Blank duplicates are simply skipped.</li>
+  <li><b>global-metadata.dat</b> — text baked into the game's compiled code
+  (IL2CPP string literals; contexts look like <code>literal #18492</code>).
+  These are patched by rebuilding the metadata blob — any translation
+  length.</li>
+  <li><b>localization-string-tables-japanese(ja)….bundle</b> — Unity
+  Localization string tables: usually the bulk of actual dialogue.
+  <b>chinese(simplified)</b> is the game's own Simplified Chinese table
+  (often a near-copy of the Japanese — leave blank to skip it), and
+  <b>english(en)</b> is any English the developers already shipped.</li>
+  <li><b>sharedassets*.assets / resources.assets</b> — shared objects,
+  including TextAssets (credits, readmes — contexts like
+  <code>お借りしたもの L0</code> = line 0 of that asset).</li>
+  <li><b>…_monoscripts….bundle</b> — script metadata; normally contains no
+  translatable text.</li>
+  <li><b>Games with custom font glyphs</b> — eroge often re-purpose rare
+  characters (box-drawing arrows and the like) as moan/emphasis marks in
+  custom fonts. The scan treats those glyph characters as ordinary text,
+  so bubble quips like <code>あっ┻…んっ┻</code> are collected and translated
+  like any other line.</li>
+</ul>
+<p>The <b>context column</b> tells you where a row lives:
+<code>Canvas/NewGameCheck/confirm/Text (TMP)</code> is the GameObject
+hierarchy path in its scene (also what the scene graph sends to the LLM as
+scene context); <code>literal #N</code> is a code literal;
+<code>$.a.b[0]</code> / <code>r1c1</code> / <code>L2</code> are JSON-path,
+CSV-cell and line-number keys inside TextAssets and text files.</p>
+
+<h2>Limitations</h2>
+<ul>
+  <li><strong>Mono games' Managed DLLs:</strong> Japanese literals compiled into
+      managed code (<code>Assembly-CSharp.dll</code> &hellip; &mdash; intro
+      cinematics, one-off lines) <strong>are translated</strong> since v2.6:
+      the export rebuilds the DLL's string heap compacted &mdash; the space
+      the Japanese text occupied is reclaimed for the English, every
+      reference is repointed, and the result is verified against the game's
+      own Mono runtime. There is no fixed size
+      limit: the DLL grows to hold the English (verified against the
+      game's own Mono runtime), so complete coverage is the norm. Rows
+      appear on re-creating the project.</li>
+  <li><strong>IL2CPP games:</strong> literals in compiled code <em>are</em>
+      translated, via a rebuild of <code>global-metadata.dat</code>.</li>
+  <li><strong>TextAsset JSON formatting may change</strong> (indentation/key
+      order) when a JSON TextAsset is patched; the content stays equivalent.</li>
+  <li>Scene/object strings are rewritten in place; if the game rebuilds or
+      re-serializes its own data at runtime, patched text persists but heavily
+      obfuscated or custom-compressed assets are out of scope.</li>
+  <li>No font is bundled: the font swap uses SLR Translator's own
+      <strong>SLRCondensedCJK</strong> (<code>www\core\SEP\SLRCondensedCJK-Regular.ttf</code>
+      in the SLR installation). If that file is missing, the export logs a
+      warning line in the overlay console and simply skips the font stage
+      (strings are still patched).</li>
+  <li><strong>Static TextMeshPro atlases are not rewritten</strong> (yet): a
+      game that bakes its TMP glyphs into a static atlas draws pre-rendered
+      letter images, so the font swap does not change its appearance. See
+      <a href="#fonts">Fonts &rarr; Limits</a> &mdash; and report such games.</li>
+</ul>
+
+<h2>Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>What to do</th></tr>
+  <tr>
+    <td>The Unity engine does not appear in New Project at all</td>
+    <td>The addon folder is wrong or the bundled runtime is missing. Verify
+        <code>www\addons\SLRUnity\package.json</code> exists and that
+        <code>runtime\python\python.exe</code> (Windows) or
+        <code>runtime\bin\python3</code> (Linux) is present inside the same
+        addon folder, then
+        restart. Without its runtime payload the addon stays completely
+        silent by design (no <em>SLRUnity</em> entry in the New Project
+        dialog is the visible symptom).</td>
+  </tr>
+  <tr>
+    <td>&ldquo;No Unity game found&rdquo; / &ldquo;Multiple Unity games found&rdquo; alert</td>
+    <td>The picked folder is not a Unity game root (no
+        <code>UnityPlayer.dll</code>/<code>GameAssembly.dll</code>, no
+        <code>&lt;Game&gt;_Data</code> with Unity data files) &mdash; or it
+        contains SEVERAL Unity games, in which case pick the specific game
+        folder directly.</td>
+  </tr>
+  <tr>
+    <td>&ldquo;Unity scan failed&rdquo; / &ldquo;Unity patch failed&rdquo; alert</td>
+    <td>The alert names the exact <strong>backend.log</strong> path &mdash; by default
+        <code>&lt;SLR&gt;\www\php\cache\&lt;project&nbsp;id&gt;\jobs\backend.log</code>.
+        The last entries contain the full Python error and traceback.</td>
+  </tr>
+  <tr>
+    <td>Error mentions <em>&ldquo;unsupported contract version&rdquo;</em></td>
+    <td>The JS addon and the Python backend come from different builds. Delete
+        <code>www\addons\SLRUnity\</code> and install the complete
+        current package again so both halves match.</td>
+  </tr>
+  <tr>
+    <td>&ldquo;Full copy export needs the original game folder (&hellip;)&rdquo;</td>
+    <td>You picked <em>full game copy</em> but the original game folder the
+        project was created from no longer exists (moved/deleted/other
+        machine). Nothing was exported. Switch the <strong>Export kind</strong>
+        back to <em>patch</em> &mdash; the project carries its own copy of every
+        string-bearing file, so patch export works without the original. If you
+        truly need a full copy, restore the game folder at the same path
+        first.</td>
+  </tr>
+  <tr>
+    <td>The patch export's output folder doesn't contain the whole game</td>
+    <td>That is by design: the default <em>patch</em> export contains the
+        changed files plus the originals of every other file <em>in scope</em>
+        (all project files unless you checked a subset in the file list), at
+        their game-relative paths. Copy those files over your game folder to
+        apply. If you want a complete runnable copy instead, choose <em>full
+        game copy</em> as the Export kind (needs the original game folder).</td>
+  </tr>
+  <tr>
+    <td>Checked <em>Replace game fonts</em>, exported, applied — but the text
+        still renders wide</td>
+    <td>The game almost certainly renders through TextMeshPro with
+        <strong>baked (static) glyph atlases</strong>: pre-rendered letter
+        images that a source-font swap cannot change (everything else
+        re-renders from the font and does change). Nothing is broken &mdash; the
+        swap landed, the shapes are just baked. Report the game; atlas-level
+        handling is future work (see <a href="#fonts">Fonts &rarr; Limits</a>).</td>
+  </tr>
+  <tr>
+    <td>Export logs a <em>WARNING: &ldquo;N staged edits did not
+        land&rdquo;</em> line in the overlay console</td>
+    <td>Some strings could not be rewritten in place (details in
+        <code>backend.log</code>). The game still runs; check whether the
+        affected strings display translated. Report the game if it recurs.</td>
+  </tr>
+  <tr>
+    <td>&ldquo;Nothing to export in full game copy mode&rdquo;</td>
+    <td>Only <em>full game copy</em> can have nothing to do: with every
+        translation still blank and the font swap off, a full copy of the
+        unchanged game would be a no-op. Fill in translations, tick
+        <strong>Replace game fonts</strong>, or switch the Export kind back to
+        <em>patch</em> &mdash; patch export always works: it writes translated
+        files plus verbatim originals (revert) for everything else in scope,
+        so even a no-change export produces a valid all-originals patch.
+        Image translation does not go through this dialog: it is a separate
+        flow (New Project &rarr; SLRUnity &rarr; Extract/Insert
+        textures).</td>
+  </tr>
+  <tr>
+    <td>&ldquo;No unity_img_manifest.json found&rdquo; (Insert translated images)</td>
+    <td>The folder picked as &ldquo;extracted-images folder&rdquo; is not the
+        one the <strong>Extract textures</strong> tool created &mdash; that
+        tool writes <code>unity_img_manifest.json</code> next to the PNGs, and
+        Insert needs it to map images back into the game files. Pick the
+        <code>&lt;Game&gt;_unity_img</code> folder (or wherever you kept the
+        pruned copy of it).</td>
+  </tr>
+  <tr>
+    <td>Zip export fails with a 7-Zip exit code</td>
+    <td>The alert includes 7z's stderr and the staging folder path &mdash; the
+        exported files are still there and can be zipped manually.</td>
+  </tr>
+</table>
+
+<div class="card note">
+  <p><strong>Where is this page?</strong> It ships inside the addon at
+  <code>assets\help.html</code> (and as <code>docs.html</code> in the offline
+  documentation on SLR v3.078+) and is offered once on your first Unity project.
+  The one-time offer is remembered in SLR's config
+  (<code>data\config.json</code> &rarr; the addon's <code>seenHelp</code> flag);
+  deleting that flag (or the config entry) re-enables the offer.</p>
+</div>
+
+</main>
+
+<footer>
+  SLRUnity addon for SLR Translator &middot; Python backend + bundled
+  runtime (contract&nbsp;v2) &middot; export font: SLR Translator's own
+  SLRCondensedCJK (not bundled with this addon).<br>
+  Bundled runtime includes UnityPy (no FMOD audio library is bundled).
+  Full license details in <code>THIRD-PARTY-NOTICES.md</code> next to
+  the addon's files.
+</footer>
+
+</body>
+</html>
